@@ -30,7 +30,8 @@
 | `Dictionary-Of-Pentesting` | BugBounty 绕过技巧（12 专题）、云元数据端点、XXE payload 集合、一行命令工具链 | 蒸馏为绕过模式矩阵、云元数据端点表、WAF 厂商绕过分节 |
 | `Hello-CTF` | CTF Web 安全教程，含 PHP/Python/Java 实战技巧 | 蒸馏为 CTF 特定技术段落（handler 绕过、filter chain 技巧、Flask PIN 计算） |
 | `ctf-wiki` | CTF 竞赛知识库，覆盖 Pwn、Crypto、逆向工程、取证和 Misc 方向 | 蒸馏为二进制利用技术（栈/堆/内核）、密码学攻击模式（RSA/格/对称）、逆向方法论、隐写术与流量分析技能 |
-| `hacktricks` | 渗透测试百科全书，覆盖 Web 技巧、Linux/Windows/macOS 提权、Active Directory、容器、移动端、AI 安全 | 蒸馏为 OS 级提权手册、AD 攻击链（Kerberos/ACL/ADCS）、移动端测试清单、容器逃逸技术、网络穿透策略 |
+| `hacktricks` | 渗透测试百科全书，覆盖 Web 技巧、Linux/Windows/macOS 提权、Active Directory、容器、移动端、AI 安全 | 蒸馏为 OS 级提级手册、AD 攻击链（Kerberos/ACL/ADCS）、移动端测试清单、容器逃逸技术、网络穿透策略 |
+| `leavesongs.com` (Phith0n) | Web 安全实战案例、Java 安全、WAF 绕过、供应链攻击、代码审计 | 蒸馏为技能补充文档（CDN 供应链、H2 RCE、SnakeYAML、LDAPS、React2Shell WAF 绕过、Django 竞态防御等） |
 | 公开安全研究论文与 CVE 公告 | 方法论框架、漏洞模式分类法、统计分布 | 蒸馏为攻击模式矩阵、系统化测试清单、决策树 |
 
 处理原则：
@@ -362,3 +363,37 @@ cd hack-skills
 - 风险提示、术语统一与内容去噪
 
 贡献内容建议满足：可验证、可审查、不鼓励未授权攻击、能帮助 Agent 在真实任务中更稳健地推理与执行。
+
+---
+
+## Leavesongs.com (Phith0n) 文章蒸馏状态
+
+本知识库持续从 [leavesongs.com](https://www.leavesongs.com) (离别歌 - Phith0n's Blog) 蒸馏高质量安全研究内容。以下是已处理文章的状态跟踪：
+
+### 已蒸馏完成
+
+| 日期 | 文章标题 | 蒸馏位置 |
+|------|---------|---------|
+| 2026-03-26 | [Apifox CDN 供应链投毒事件简单复盘](https://www.leavesongs.com/PENETRATION/apifox-supply-chain-attack-analysis.html) | [`dependency-confusion/CDN_SUPPLY_CHAIN.md`](skills/dependency-confusion/CDN_SUPPLY_CHAIN.md) |
+| 2025-12-30 | [React2Shell 攻防笔记：价值15万美元的WAF绕过](https://www.leavesongs.com/PENETRATION/deep-dive-into-react2shell.html) | [`waf-bypass-techniques/WAF_PRODUCT_MATRIX.md`](skills/waf-bypass-techniques/WAF_PRODUCT_MATRIX.md) |
+| 2025-04-19 | [扒一扒h2database远程代码执行](https://www.leavesongs.com/PENETRATION/talk-about-h2database-rce.html) | [`sqli-sql-injection/H2_RCE.md`](skills/sqli-sql-injection/H2_RCE.md) |
+| 2025-04-11 | [ClassPathXmlApplicationContext的不出网利用](https://www.leavesongs.com/PENETRATION/springboot-xml-beans-exploit-without-network.html) | [`deserialization-insecure/JAVA_GADGET_CHAINS.md`](skills/deserialization-insecure/JAVA_GADGET_CHAINS.md) |
+| 2025-04-10 | [从HertzBeat聊聊SnakeYAML反序列化](https://www.leavesongs.com/PENETRATION/jdbc-injection-with-hertzbeat-cve-2024-42323.html) | [`deserialization-insecure/JAVA_GADGET_CHAINS.md`](skills/deserialization-insecure/JAVA_GADGET_CHAINS.md) |
+| 2024-08-16 | [如何巧妙构建"LDAPS"服务器利用JNDI注入](https://www.leavesongs.com/PENETRATION/use-tls-proxy-to-exploit-ldaps.html) | [`jndi-injection/SKILL.md`](skills/jndi-injection/SKILL.md) |
+| 2024-04-12 | [当Nashorn失去括号：非典型Java命令执行绕过](https://www.leavesongs.com/PENETRATION/nashorn-rce-without-parentheses.html) | [`cmdi-command-injection/SKILL.md`](skills/cmdi-command-injection/SKILL.md) |
+| 2024-02-23 | [UTF-8 Overlong Encoding导致的安全问题](https://www.leavesongs.com/PENETRATION/utf-8-overlong-encoding.html) | [`waf-bypass-techniques/WAF_PRODUCT_MATRIX.md`](skills/waf-bypass-techniques/WAF_PRODUCT_MATRIX.md) |
+| 2024-01-27 | [Jenkins文件读取漏洞拾遗（CVE-2024-23897）](https://www.leavesongs.com/PENETRATION/jenkins-cve-2024-23897.html) | [`path-traversal-lfi/SKILL.md`](skills/path-traversal-lfi/SKILL.md) |
+| 2023-03-19 | [Django下防御Race Condition漏洞](https://www.leavesongs.com/PENETRATION/django-race-condition-defense.html) | [`race-condition/SKILL.md`](skills/race-condition/SKILL.md) |
+
+### 待评估/待蒸馏
+
+| 日期 | 文章标题 | 评估状态 |
+|------|---------|---------|
+| 2023-10-07 | [Jumpserver安全一窥：Sep系列漏洞深度解析](https://www.leavesongs.com/PENETRATION/jumpserver-sep-2023-multiple-vulnerabilities-go-through.html) | 待评估：是否需要新增「堡垒机安全」技能 |
+| 2022-08-20 | [从偶遇Flarum开始的RCE之旅](https://www.leavesongs.com/PENETRATION/flarum-rce-tour.html) | 待评估：CMS 特定漏洞 |
+
+### 索引文档
+
+完整的文章爬取、索引和蒸馏详情见：
+- [`/Users/v1ll4n/Projects/articals/index/leavesongs-articles-index.md`](../articals/index/leavesongs-articles-index.md)
+- 爬取的原始文章保存在 `articals/leavesongs/` 目录

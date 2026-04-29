@@ -31,6 +31,7 @@ Primary reference sources (all publicly available, used strictly for educational
 | `Hello-CTF` | CTF web security tutorials with hands-on tricks for PHP/Python/Java challenges | Distilled into CTF-specific technique sections (handler bypass, filter chain tricks, Flask PIN) |
 | `ctf-wiki` | CTF competition knowledge base covering Pwn, Crypto, Reverse Engineering, Forensics, and Misc | Distilled into binary exploitation techniques (stack/heap/kernel), crypto attack patterns (RSA/lattice/symmetric), RE methodology, steganography, and traffic analysis skills |
 | `hacktricks` | Penetration testing encyclopedia covering web tricks, Linux/Windows/macOS privilege escalation, Active Directory, containers, mobile, and AI security | Distilled into OS-specific privilege escalation playbooks, AD attack chains (Kerberos/ACL/ADCS), mobile pentesting checklists, container escape techniques, and network pivoting strategies |
+| `leavesongs.com` (Phith0n) | Web security real-world cases, Java security, WAF bypass, supply chain attacks, code auditing | Distilled into skill supplementary docs (CDN supply chain, H2 RCE, SnakeYAML, LDAPS, React2Shell WAF bypass, Django race defense, etc.) |
 | Public security research papers and CVE advisories | Methodology frameworks, vulnerability pattern taxonomies, statistical distributions | Distilled into attack pattern matrices, systematic testing checklists, decision trees |
 
 Processing principles:
@@ -362,3 +363,37 @@ PRs are welcome. Key areas include:
 - Risk annotations, terminology consistency, and content denoising
 
 Contributions should ideally be verifiable, auditable, and helpful for Agents to reason and execute more robustly in real tasks.
+
+---
+
+## Leavesongs.com (Phith0n) Article Distillation Status
+
+This knowledge base continuously distills high-quality security research from [leavesongs.com](https://www.leavesongs.com) (Phith0n's Blog). Below is the tracking status of processed articles:
+
+### Distilled (Completed)
+
+| Date | Article Title | Distilled To |
+|------|---------------|--------------|
+| 2026-03-26 | [Apifox CDN Supply Chain Attack Analysis](https://www.leavesongs.com/PENETRATION/apifox-supply-chain-attack-analysis.html) | [`dependency-confusion/CDN_SUPPLY_CHAIN.md`](skills/dependency-confusion/CDN_SUPPLY_CHAIN.md) |
+| 2025-12-30 | [React2Shell Attack & Defense: $150k WAF Bypass](https://www.leavesongs.com/PENETRATION/deep-dive-into-react2shell.html) | [`waf-bypass-techniques/WAF_PRODUCT_MATRIX.md`](skills/waf-bypass-techniques/WAF_PRODUCT_MATRIX.md) |
+| 2025-04-19 | [H2 Database RCE Deep Dive](https://www.leavesongs.com/PENETRATION/talk-about-h2database-rce.html) | [`sqli-sql-injection/H2_RCE.md`](skills/sqli-sql-injection/H2_RCE.md) |
+| 2025-04-11 | [ClassPathXmlApplicationContext No-Network Exploitation](https://www.leavesongs.com/PENETRATION/springboot-xml-beans-exploit-without-network.html) | [`deserialization-insecure/JAVA_GADGET_CHAINS.md`](skills/deserialization-insecure/JAVA_GADGET_CHAINS.md) |
+| 2025-04-10 | [SnakeYAML Deserialization via HertzBeat](https://www.leavesongs.com/PENETRATION/jdbc-injection-with-hertzbeat-cve-2024-42323.html) | [`deserialization-insecure/JAVA_GADGET_CHAINS.md`](skills/deserialization-insecure/JAVA_GADGET_CHAINS.md) |
+| 2024-08-16 | [Building "LDAPS" Server for JNDI Injection](https://www.leavesongs.com/PENETRATION/use-tls-proxy-to-exploit-ldaps.html) | [`jndi-injection/SKILL.md`](skills/jndi-injection/SKILL.md) |
+| 2024-04-12 | [Nashorn RCE Without Parentheses](https://www.leavesongs.com/PENETRATION/nashorn-rce-without-parentheses.html) | [`cmdi-command-injection/SKILL.md`](skills/cmdi-command-injection/SKILL.md) |
+| 2024-02-23 | [UTF-8 Overlong Encoding Security Issues](https://www.leavesongs.com/PENETRATION/utf-8-overlong-encoding.html) | [`waf-bypass-techniques/WAF_PRODUCT_MATRIX.md`](skills/waf-bypass-techniques/WAF_PRODUCT_MATRIX.md) |
+| 2024-01-27 | [Jenkins File Read Vulnerability (CVE-2024-23897)](https://www.leavesongs.com/PENETRATION/jenkins-cve-2024-23897.html) | [`path-traversal-lfi/SKILL.md`](skills/path-traversal-lfi/SKILL.md) |
+| 2023-03-19 | [Django Race Condition Defense](https://www.leavesongs.com/PENETRATION/django-race-condition-defense.html) | [`race-condition/SKILL.md`](skills/race-condition/SKILL.md) |
+
+### Pending Evaluation
+
+| Date | Article Title | Status |
+|------|---------------|--------|
+| 2023-10-07 | [Jumpserver Security Analysis: Sep Series Vulnerabilities](https://www.leavesongs.com/PENETRATION/jumpserver-sep-2023-multiple-vulnerabilities-go-through.html) | Pending: Evaluate need for "Bastion Host Security" skill |
+| 2022-08-20 | [RCE Journey Starting from Flarum](https://www.leavesongs.com/PENETRATION/flarum-rce-tour.html) | Pending: CMS-specific vulnerability |
+
+### Index Document
+
+Complete crawling, indexing, and distillation details:
+- [`/Users/v1ll4n/Projects/articals/index/leavesongs-articles-index.md`](../articals/index/leavesongs-articles-index.md)
+- Original crawled articles saved in `articals/leavesongs/` directory

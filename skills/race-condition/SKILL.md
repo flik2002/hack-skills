@@ -521,6 +521,138 @@ h2_conn.send_multiple_requests_at_once(all_headers, body_list=all_bodies)
 
 ---
 
+## Django Race Condition 防御 (from leavesongs.com)
+
+> 基于 Phith0n 对 Django 竞态条件漏洞的防御分析 [1]
+
+### 常见漏洞场景
+
+**场景1: 优惠券重复使用**
+```python
+# 漏洞代码
+if not UserCoupon.objects.filter(user=user, coupon=coupon).exists():
+    UserCoupon.objects.create(user=user, coupon=coupon)  # 时间窗口！
+```
+
+**场景2: 积分/余额超扣**
+```python
+# 漏洞代码
+if user.balance >= amount:
+    user.balance -= amount  # 读取-修改-写入，非原子操作
+    user.save()
+```
+
+### 防御方法
+
+#### 1. 数据库级别悲观锁 (select_for_update)
+
+```python
+from django.db import transaction
+
+@transaction.atomic
+def apply_coupon(user, coupon):
+    # 锁定用户优惠券记录
+    user_coupons = UserCoupon.objects.select_for_update().filter(user=user)
+    
+    if not user_coupons.filter(coupon=coupon).exists():
+        UserCoupon.objects.create(user=user, coupon=coupon)
+        return True
+    return False
+```
+
+**注意**: `select_for_update()` 必须放在事务内，且 MySQL 需要 InnoDB 引擎。
+
+#### 2. 数据库级别乐观锁
+
+```python
+from django.db import models, transaction
+
+class User(models.Model):
+    balance = models.DecimalField(max_digits=10, decimal_places=2)
+    version = models.IntegerField(default=0)  # 版本号
+
+@transaction.atomic
+def deduct_balance(user_id, amount):
+    try:
+        # 尝试更新，只有当 version 匹配时才成功
+        rows = User.objects.filter(
+            id=user_id, 
+            balance__gte=amount,
+            version=user.version
+        ).update(
+            balance=models.F('balance') - amount,
+            version=models.F('version') + 1
+        )
+        
+        if rows == 0:
+            raise Exception("余额不足或并发冲突")
+    except User.DoesNotExist:
+        raise Exception("用户不存在")
+```
+
+#### 3. 唯一约束 (UniqueConstraint)
+
+```python
+from django.db import models
+
+class UserCoupon(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE)
+    
+    class Meta:
+        unique_together = [['user', 'coupon']]  # 数据库级唯一约束
+        # Django 3.2+ 使用 constraints
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'coupon'],
+                name='unique_user_coupon'
+            )
+        ]
+```
+
+**优势**: 数据库层面保证，无需应用层锁，性能最好。
+
+#### 4. 原子操作 (F() 表达式)
+
+```python
+from django.db.models import F
+
+# 原子性扣减，无需显式锁
+User.objects.filter(id=user_id, balance__gte=amount).update(
+    balance=F('balance') - amount
+)
+```
+
+**原理**: 在数据库层面执行 `UPDATE users SET balance = balance - 100`，而非读取-计算-写入。
+
+#### 5. 事务隔离级别调整
+
+```python
+from django.db import transaction
+
+@transaction.atomic(isolation=transaction.ISOLATION_SERIALIZABLE)
+def critical_operation():
+    # 串行化隔离级别，完全避免竞态条件
+    # 注意：性能开销大，仅用于关键操作
+    pass
+```
+
+### 防御决策矩阵
+
+| 场景 | 推荐方案 | 备选方案 | 说明 |
+|------|---------|---------|------|
+| 防重复创建 | 唯一约束 | 悲观锁 | 唯一约束性能最优 |
+| 数值增减 | F() 表达式 | 乐观锁 | 数据库原子操作 |
+| 复杂条件判断 | 悲观锁 | 串行化隔离 | 保证检查-执行原子性 |
+| 跨行/跨表操作 | 悲观锁 | 分布式锁 | 涉及多行时选悲观锁 |
+
+### 参考
+
+[1] Phith0n. "Django下防御Race Condition漏洞". leavesongs.com. 2023-03-19.
+    https://www.leavesongs.com/PENETRATION/django-race-condition-defense.html
+
+---
+
 ## Related
 
 - **business-logic-vulnerabilities** — workflow, coupon abuse, and logic-first checklists (`../business-logic-vulnerabilities/SKILL.md`).

