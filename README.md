@@ -408,3 +408,5 @@ PRs are welcome. Key areas include:
 - Risk annotations, terminology consistency, and content denoising
 
 Contributions should ideally be verifiable, auditable, and helpful for Agents to reason and execute more robustly in real tasks.
+
+- [OpenClaw Monitor](https://github.com/flik2002/openclaw-monitor) — Real-time monitoring dashboard for OpenClaw AI agents: token usage, session tracking, 7-day trends, WebSocket updates
